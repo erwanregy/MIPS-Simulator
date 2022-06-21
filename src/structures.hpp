@@ -1,73 +1,53 @@
-#include <iostream>
+#pragma once
+
 #include <bitset>
 #include <string>
 #include <vector>
-#include "stages.hpp"
+#include "buffers.hpp"
 
-using std::cerr, std::endl, std::bitset, std::string, std::vector;
+using std::bitset, std::string, std::vector;
 
 #define bit bitset<1>
 #define word bitset<32>
 
-class RegFile
+struct RegFile
 {
-public:
     word Register[32];
     void Initialise();
-    void Read(bitset<5> ReadReg1, bitset<5> ReadReg2, word &ReadData1, word &ReadData2);
-    void Write(bitset<5> WriteReg, word WriteData);
+    void Read(const bitset<5> ReadReg1, const bitset<5> ReadReg2, word& ReadData1, word& ReadData2);
+    void Write(const bitset<5> WriteReg, const word WriteData);
 };
 
-class Mem
+struct Mem
 {
-public:
     word *Memory;
-    int Size;
-    void Initialise(int MemSize);
-    void Read(word Address, word &Data);
+    unsigned int MemSize;
+    void Initialise(unsigned const int Size);
+    void Read(const word Address, word &Data);
 };
 
-class InsMem : public Mem
+struct InsMem : Mem
 {
-public:
     vector<string> basic;
-    void Initialise(string assembly, int MemSize);
+    unsigned int PCMax;
+    void Initialise(const string assembly, unsigned const int size, const bool print_basic, const bool print_imem, const int base_type);
 };
 
-class DataMem : public Mem
+struct DataMem : Mem
 {
-public:
-    void Write(word Address, word Data);
+    void Write(const word Address, const word Data);
 };
-
-void Control(bitset<6> Opcode, bit &RegWrite, bit &MemToReg, bit &MemWrite, bit &MemRead, bit &BEQ, bit &BNE, bit &Jump, bit &RegDst, bitset<3> &ALUOp, bit &ALUSrc);
-
-void ALUControl(bitset<3> ALUOp, bitset<6> funct, bitset<6> &ALUFunct);
-
-void ALU(bitset<6> Funct, word InputA, word InputB, bitset<5> shamt, word &Result);
-
-class FUnit
+struct HDUnit
 {
-public:
-    bitset<2> ForwardA, ForwardB;
+    bit IFFlush, PCWrite, IFIDWrite, Control;
     void Initialise();
-    void forward(IDEXBuff::Out IDEX, EXMEMBuff::Out EXMEM, MEMWBBuff::Out MEMWB);
 };
 
-class IDFUnit : public FUnit
+struct FUnit
 {
-    virtual void Forward(IDEXBuff::Out IDEX, EXMEMBuff::Out EXMEM, MEMWBBuff::Out MEMWB);
-};
-
-class EXFUnit : public FUnit
-{
-    virtual void Forward(IDEXBuff::Out IDEX, EXMEMBuff::Out EXMEM, MEMWBBuff::Out MEMWB);
-};
-
-class HDUnit
-{
-public:
-    bit PCWrite, IFFlush, IFIDWrite, Control;
+    struct Forward
+    {
+        bitset<2> ForwardA, ForwardB;
+    } ID, EX;
     void Initialise();
-    void HazardDetect(IDEXBuff::Out IDEX, EXMEMBuff::Out EXMEM);
 };

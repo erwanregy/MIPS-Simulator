@@ -1,0 +1,7 @@
+make.exe --dry-run --always-make --keep-going --print-directory
+make.exe: Entering directory `c:/Users/erwan/OneDrive - University of Southampton/Code/C++/MIPS Simulator'
+windres resources/icon.rc -O coff -o resources/icon.res
+g++ src/*.cpp -o MIPSSim resources/icon.res
+ 
+make.exe: Leaving directory `c:/Users/erwan/OneDrive - University of Southampton/Code/C++/MIPS Simulator'
+ 

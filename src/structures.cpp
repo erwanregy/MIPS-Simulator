@@ -1,37 +1,29 @@
+#include <iostream>
 #include "structures.hpp"
 #include "assembler.hpp"
 
-word operator+(word input1, word input2) // overload bitset<32> addition function
-{
-    word output; bool carry = 0;
-    for (int i = 0; i < 32; i++)
-    {
-        output[i] = (input1[i] ^ input2[i]) ^ carry;
-        carry = (input1[i] == 1 && input2[i] == 1) || (input1[i] == 1 && carry == 1) || (input2[i] == 1 && carry == 1);
-    }
-    return output;
-}
+using std::cerr;
 
 void RegFile::Initialise()
 {
     for (int i = 0; i < sizeof(Register)/sizeof(Register[0]); i++) Register[i] = 0;
 }
-void RegFile::Write(bitset<5> WriteReg, word WriteData)
+void RegFile::Write(const bitset<5> WriteReg, const word WriteData)
 {
-    if (WriteReg.to_ulong() > 1 && WriteReg.to_ulong() < 26) Register[WriteReg.to_ulong()] = WriteData;
+    if (WriteReg.to_ulong() > 0 && WriteReg.to_ulong() < 26) Register[WriteReg.to_ulong()] = WriteData;
     else
     {
-        if (WriteReg == 0) cerr << "Warning: Tried to write the value " << WriteData.to_ulong() << " to $zero. Forbidden, reserved for the value 0";
-        else if (WriteReg == 1) cerr << "Warning: Tried to write the value " << WriteData.to_ulong() << " to $at. Forbidden, reserved for pseudo-instructions";
-        else if (WriteReg == 26) cerr << "Warning: Tried to write the value " << WriteData.to_ulong() << " to $k0. Unsupported register";
-        else if (WriteReg == 27) cerr << "Warning: Tried to write the value " << WriteData.to_ulong() << " to $k1. Unsupported register";
-        else if (WriteReg == 28) cerr << "Warning: Tried to write the value " << WriteData.to_ulong() << " to $gp. Unsupported register";
-        else if (WriteReg == 29) cerr << "Warning: Tried to write the value " << WriteData.to_ulong() << " to $sp. Unsupported register";
-        else if (WriteReg == 30) cerr << "Warning: Tried to write the value " << WriteData.to_ulong() << " to $fp. Unsupported register";
-        else if (WriteReg == 31) cerr << "Warning: Tried to write the value " << WriteData.to_ulong() << " to $ra. Unsupported register";
+        if (WriteReg == 0) cerr << "Warning: Tried to write to $zero which is reserved for the value 0\n";
+        else if (WriteReg == 26) cerr << "Warning: Tried to write to $k0 which is an unsupported register\n";
+        else if (WriteReg == 27) cerr << "Warning: Tried to write to $k1 which is an unsupported register\n";
+        else if (WriteReg == 28) cerr << "Warning: Tried to write to $gp which is an unsupported register\n";
+        else if (WriteReg == 29) cerr << "Warning: Tried to write to $sp which is an unsupported register\n";
+        else if (WriteReg == 30) cerr << "Warning: Tried to write to $fp which is an unsupported register\n";
+        else if (WriteReg == 31) cerr << "Warning: Tried to write to $ra which is an unsupported register\n";
+        else cerr << "Warning tried to write to $" << WriteReg << " which does not exist\n";
     }
 }
-void RegFile::Read(bitset<5> ReadReg1, bitset<5> ReadReg2, word &ReadData1, word &ReadData2)
+void RegFile::Read(const bitset<5> ReadReg1, const bitset<5> ReadReg2, word &ReadData1, word &ReadData2)
 {
     if (ReadReg1.to_ulong() < 26 && ReadReg2.to_ulong() < 26)
     {
@@ -49,109 +41,39 @@ void RegFile::Read(bitset<5> ReadReg1, bitset<5> ReadReg2, word &ReadData1, word
     }
 }
 
-void Mem::Initialise(int MemSize)
+void Mem::Initialise(unsigned const int size)
 {
-    Size = MemSize;
-}
-void Mem::Read(word Address, word &Data)
-{
-    if (Address.to_ulong() > Size);
-    Data = Memory[(Address >> 2).to_ulong()];
-}
-
-void InsMem::Initialise(string assembly, int MemSize)
-{
+    MemSize = size;
     Memory = new word[MemSize]; // Create memory
     for (int i = 0; i < MemSize; i++) Memory[i] = 0; // Clear memory
-    assemble(assembly, basic, Memory, MemSize);
+}
+void Mem::Read(const word Address, word &Data)
+{
+    if ((Address >> 2).to_ulong() > MemSize) cerr << "Warning: Tried to read from address " << Address.to_ulong() << " which does not exist\n";
+    else Data = Memory[(Address >> 2).to_ulong()];
 }
 
-void DataMem::Write(word Address, word Data)
+void InsMem::Initialise(const string assembly, unsigned const int size, const bool print_basic, const bool print_imem, const int base_type)
 {
-    if (Address.to_ulong() > Size);
-    Memory[(Address >> 2).to_ulong()] = Data;
+    MemSize = size;
+    Memory = new word[MemSize]; // Create memory
+    for (int i = 0; i < MemSize; i++) Memory[i] = 0; // Clear memory
+    assemble(assembly, basic, Memory, MemSize, print_basic, print_imem, base_type, PCMax);
 }
 
-void Control(bitset<6> Opcode, bit &RegWrite, bit &MemToReg, bit &MemWrite, bit &MemRead, bit &BEQ, bit &BNE, bit &Jump, bit &RegDst, bitset<3> &ALUOp, bit &ALUSrc)
+void DataMem::Write(const word Address, const word Data)
 {
-    RegWrite = !(Opcode == 2 || Opcode == 4 || Opcode == 5 || Opcode == 43); // Not jump, branch, or store type
-    MemToReg = (Opcode == 43); // Store type
-    MemWrite = (Opcode == 43); // Store type
-    MemRead = (Opcode == 35); // Load type
-    BEQ = (Opcode == 4); // beq
-    BNE = (Opcode == 5); // bne
-    Jump = (Opcode == 2); // JType
-    RegDst = (Opcode == 0); // RType
-    if (Opcode == 0) ALUOp = 2; // RType - ALUfunc = funct
-    else if (Opcode == 4 || Opcode == 5) ALUOp = 1; // Branch type - ALUfunc = subu
-    else if (Opcode == 9 || Opcode == 35 || Opcode == 43) ALUOp = 0; // addiu or load/store type  - ALUfunc = addu
-    else ALUOp = Opcode.to_ulong() - 8; // IType - ALUfunc = Opcode - 8
-    ALUSrc = (Opcode.to_ulong() >= 9); // Imm?
+    if ((Address >> 2).to_ulong() > MemSize) cerr << "Warning: Tried to write to address " << Address.to_ulong() << " which does not exist\n";
+    else Memory[(Address >> 2).to_ulong()] = Data;
 }
 
-void ALUControl(bitset<3> ALUOp, bitset<6> funct, bitset<6> &ALUFunct)
+void HDUnit::Initialise()
 {
-    if (ALUOp == 2) ALUFunct = funct; // funct (RType)
-    else if (ALUOp == 0) ALUFunct = 33; // addu (load/store type or addiu)
-    else if (ALUOp == 1) ALUFunct = 35; // subu (branch type)
-    else if (ALUOp == 3) ALUFunct = 43; // sltu (sltiu)
-    else if (ALUOp == 4 || ALUOp == 5 || ALUOp == 6) ALUFunct = ALUOp.to_ulong() + 32; // and, or, xor (andi, ori, xori)
-}
-
-void ALU(bitset<6> Funct, word InputA, word InputB, bitset<5> shamt, word &Result)
-{
-    if (Funct == 0) Result = InputB.to_ulong() << shamt.to_ulong(); // sll
-    else if (Funct == 3) Result = InputB.to_ulong() >> shamt.to_ulong(); // srl
-    else if (Funct == 33) Result = InputA + InputB; // addu
-    else if (Funct == 35) Result = InputA + InputB.flip() + 1; // subu
-    else if (Funct == 36) Result = InputA & InputB; // and
-    else if (Funct == 37) Result = InputA | InputB; // or
-    else if (Funct == 38) Result = InputA ^ InputB; // xor
-    else if (Funct == 39) Result = (InputA | InputB).flip(); // nor
-    else if (Funct == 43) Result = InputA.to_ulong() < InputB.to_ulong(); // sltu
+    IFFlush = PCWrite = 0;
+    IFIDWrite = Control = 1;
 }
 
 void FUnit::Initialise()
 {
-    ForwardA = ForwardB = 0;
-}
-
-void IDFUnit::Forward(IDEXBuff::Out IDEX, EXMEMBuff::Out EXMEM, MEMWBBuff::Out MEMWB)
-{
-    // ForwardA:
-    if (IDEX.SourceReg == EXMEM.WriteReg) ForwardA = 2; // EX/MEM hazard
-    else if (IDEX.SourceReg == MEMWB.WriteReg) ForwardA = 1; // MEM/WB hazard
-    else ForwardA = 0;
-    // ForwardB:
-    if (IDEX.TargReg == EXMEM.WriteReg) ForwardB = 2; // EX/MEM hazard
-    else if (IDEX.TargReg == MEMWB.WriteReg) ForwardB = 1; // MEM/WB hazard
-    else ForwardB = 0;
-}
-
-void EXFUnit::Forward(IDEXBuff::Out IDEX, EXMEMBuff::Out EXMEM, MEMWBBuff::Out MEMWB)
-{
-    // ForwardA:
-    if (EXMEM.RegWrite == 1 && EXMEM.WriteReg != 0 && IDEX.SourceReg == EXMEM.WriteReg) ForwardA = 2; // EX/MEM hazard
-    else if (MEMWB.RegWrite == 1 && MEMWB.WriteReg != 0 && IDEX.SourceReg == MEMWB.WriteReg) ForwardA = 1; // MEM/WB hazard
-    else ForwardA = 0;
-    // ForwardB:
-    if (EXMEM.RegWrite == 1 && EXMEM.WriteReg != 0 && IDEX.TargReg == EXMEM.WriteReg) ForwardB = 2; // E/ EX/MEM hazard
-    else if (MEMWB.RegWrite == 1 && MEMWB.WriteReg != 0 && IDEX.TargReg == MEMWB.WriteReg) ForwardB = 1; // MEM/WB hazard
-    else ForwardB = 0;
-}
-
-void HDUnit::HazardDetect(IDEXBuff::Out IDEX, EXMEMBuff::Out EXMEM)
-{
-    // if (ID_Branch == 1) IFFlush = 1;
-    // else IFFlush = 0;
-    if ((IDEX.MemRead == 1) && ((IDEX.TargReg == IDEX.SourceReg) || (EXMEM.WriteReg == IDEX.TargReg)))
-    {
-        PCWrite = IFIDWrite = 0;
-        Control = 1;
-    }
-    else
-    {
-        PCWrite = IFIDWrite = 1;
-        Control = 0;
-    }
-}
+    ID = EX = { 0 };
+};

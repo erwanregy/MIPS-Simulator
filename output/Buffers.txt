@@ -1,0 +1,35 @@
+Clock Cycle 13
+
+IF/ID
+Instruction 0
+PCPlus4 48
+
+ID/EX
+ALUOp 0
+ALUSrc 0
+DestReg 0
+Imm 0
+MemRead 0
+MemWrite 0
+ReadData1 0
+ReadData2 0
+RegDst 0
+RegWrite 0
+SourceReg 0
+TargReg 0
+
+EX/MEM
+ALUResult 0
+MemRead 0
+MemToReg 0
+MemWrite 0
+RegWrite 0
+WriteData 0
+WriteReg 0
+
+MEM/WB
+ALUResult 0
+ALUResult 0
+ReadData 0
+RegWrite 0
+WriteReg 0

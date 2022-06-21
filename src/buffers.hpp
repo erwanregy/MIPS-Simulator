@@ -1,3 +1,5 @@
+#pragma once
+
 #include <bitset>
 
 using std::bitset;
@@ -5,65 +7,55 @@ using std::bitset;
 #define bit bitset<1>
 #define word bitset<32>
 
-class Buffer
+struct Buffer
 {
-public:
-    struct Reg {};
-    struct In : public Reg {};
-    struct Out : public Reg {};
+    struct Reg
+    {
+        bit Data;
+    } In, Out;
     void Initialise();
     void Clock();
 };
 
-class IFIDBuff : public Buffer
+struct IFIDBuff : Buffer
 {
-public:
-    word PCPlus4, Instruction;
-    virtual void Clock(IFIDIn In, IFIDOut &Out)
+    struct Reg
     {
-        Out.PCPlus4 = In.PCPlus4;
-    }
+        word PCPlus4, Instruction;
+    } In, Out;
+    virtual void Clock();
 };
-class IFIDIn : public IFIDBuff {};
-class IFIDOut : public IFIDBuff {};
 
-class IDEXBuff : public Buffer
+struct IDEXBuff : Buffer
 {
-public:
-    bit RegWrite, MemToReg, MemWrite, MemRead, RegDst, ALUSrc;
-    bitset<3> ALUOp;
-    bitset <5> SourceReg, TargReg, DestReg;
-    word ReadData1, ReadData2, Imm;
-    virtual void Clock(IDEXIn In, IDEXOut &Out)
+    struct Reg
     {
-        Out.PCPlus4 = In.PCPlus4;
-    }
+        bit RegWrite, MemToReg, MemWrite, MemRead, RegDst, ALUSrc;
+        bitset<3> ALUOp;
+        bitset <5> SourceReg, TargReg, DestReg;
+        word ReadData1, ReadData2, Imm;
+    } In, Out;
+    virtual void Clock();
 };
-class IDEXIn : public IFIDBuff {};
-class IDEXOut : public IFIDBuff {};
 
-class EXMEMBuff : public Buffer
+struct EXMEMBuff : Buffer
 {
-public:
     struct Reg
     {
         bit RegWrite, MemToReg, MemWrite, MemRead;
         bitset<5> WriteReg;
         word ALUResult, WriteData;
-    };
-    struct In : public Reg {};
-    struct Out : public Reg {};
+    } In, Out;
+    virtual void Clock();
 };
 
-class MEMWBBuff : public Buffer
+struct MEMWBBuff : Buffer
 {
-public:
     struct Reg
     {
         bit RegWrite, MemToReg;
         bitset<5> WriteReg;
         word ALUResult, ReadData;
-    };
-    struct In : public Reg {};
-    struct Out : public Reg {};
+    } In, Out;
+    virtual void Clock();
 };
